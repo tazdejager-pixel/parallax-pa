@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, maximum-scale=1.0, user-scalable=no">
+  <meta name="theme-color" content="#2f4858">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="apple-mobile-web-app-title" content="Parallax PA">
+  <link rel="manifest" href="./manifest.webmanifest">
+  <link rel="apple-touch-icon" href="./icons/icon-192.png">
+  <link rel="stylesheet" href="./styles.css">
+  <title>Parallax PA</title>
+</head>
+<body>
+  <div id="app">
+    <!-- Header -->
+    <header class="app-header">
+      <div class="brand">
+        <span class="brand-mark">Parallax</span>
+        <span class="brand-pa">PA</span>
+      </div>
+      <button id="settingsBtn" class="icon-btn" aria-label="Settings">&#9881;</button>
+    </header>
+
+    <!-- SEND tab -->
+    <section id="tab-send" class="tab-panel active">
+      <div class="panel-scroll">
+        <h2 class="panel-title">Send a task</h2>
+        <p class="panel-sub">Speak or type. It lands in the workspace you pick and Claude picks it up.</p>
+
+        <label class="field-label" for="workspaceSelect">Workspace</label>
+        <select id="workspaceSelect" class="select"></select>
+
+        <label class="field-label" for="taskText">Task</label>
+        <textarea id="taskText" class="textarea" rows="6" placeholder="e.g. Draft a follow-up email to Debbie about the lease..."></textarea>
+
+        <div class="record-row">
+          <button id="recordBtn" class="record-btn" aria-label="Record voice">
+            <span class="mic-icon">&#127908;</span>
+            <span id="recordLabel">Hold to record</span>
+          </button>
+          <span id="recordStatus" class="record-status"></span>
+        </div>
+
+        <button id="sendTaskBtn" class="primary-btn">Send task</button>
+        <div id="sendResult" class="result-line"></div>
+      </div>
+    </section>
+
+    <!-- CHAT tab -->
+    <section id="tab-chat" class="tab-panel">
+      <div class="chat-scroll" id="chatScroll">
+        <div class="chat-empty" id="chatEmpty">
+          <p>Ask me anything about your business.</p>
+        </div>
+      </div>
+      <div class="chips" id="chatChips">
+        <button class="chip" data-chip="What's on my calendar today and tomorrow?">Today</button>
+        <button class="chip" data-chip="Any new leads in the last 24 hours?">New leads</button>
+        <button class="chip" data-chip="Give me a status of my active plans.">Plan status</button>
+        <button class="chip" data-chip="What did the overnight automation routines find?">Overnight</button>
+      </div>
+      <div class="chat-input-row">
+        <button id="chatRecordBtn" class="icon-btn mic-btn" aria-label="Record">&#127908;</button>
+        <input id="chatInput" class="chat-input" type="text" placeholder="Message Parallax PA..." autocomplete="off">
+        <button id="chatSendBtn" class="send-btn" aria-label="Send">&#10148;</button>
+      </div>
+    </section>
+
+    <!-- INBOX tab -->
+    <section id="tab-inbox" class="tab-panel">
+      <div class="panel-scroll">
+        <h2 class="panel-title">Inbox</h2>
+        <p class="panel-sub">Tasks you sent, and decisions I'm waiting on.</p>
+        <div id="inboxList" class="inbox-list">
+          <div class="inbox-empty">Nothing here yet.</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Bottom nav -->
+    <nav class="bottom-nav">
+      <button class="nav-btn active" data-tab="send">
+        <span class="nav-icon">&#9993;</span><span class="nav-label">Send</span>
+      </button>
+      <button class="nav-btn" data-tab="chat">
+        <span class="nav-icon">&#128172;</span><span class="nav-label">Chat</span>
+      </button>
+      <button class="nav-btn" data-tab="inbox">
+        <span class="nav-icon">&#128229;</span><span class="nav-label">Inbox</span>
+        <span id="inboxBadge" class="nav-badge" hidden>0</span>
+      </button>
+    </nav>
+  </div>
+
+  <!-- Settings sheet -->
+  <div id="settingsSheet" class="sheet" hidden>
+    <div class="sheet-card">
+      <h3>Settings</h3>
+      <label class="toggle-row">
+        <span>Read replies aloud by default</span>
+        <input type="checkbox" id="listenDefault">
+      </label>
+      <p class="sheet-note">When off, replies are text with a "listen" button so you choose per message.</p>
+      <button id="closeSettings" class="secondary-btn">Done</button>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="./config.js"></script>
+  <script src="./app.js"></script>
+</body>
+</html>
