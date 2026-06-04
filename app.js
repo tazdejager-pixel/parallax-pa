@@ -291,6 +291,38 @@
     }
   });
 
+  /* ---------- Tidy up (Slice 5: voice memo -> structured task + suggested workspace) ---------- */
+  $("tidyBtn").addEventListener("click", async () => {
+    const st = $("tidyStatus");
+    const ta = $("taskText");
+    const text = ta.value.trim();
+    if (!session) { st.textContent = "Sign in first."; return; }
+    if (!text) { st.textContent = "Nothing to tidy yet - speak or type first."; return; }
+    $("tidyBtn").disabled = true;
+    st.textContent = "Tidying...";
+    try {
+      const res = await fetch(webhook("structure"), {
+        method: "POST", headers: authHeaders({ "Content-Type": "application/json" }),
+        body: JSON.stringify({ text }),
+      });
+      if (!res.ok) throw new Error("structure failed");
+      const data = await res.json();
+      if (data.task) ta.value = data.task;
+      // Suggest the workspace when she left the picker on Auto
+      if (data.workspace && $("workspaceSelect").value === "auto") {
+        $("workspaceSelect").value = data.workspace;
+        const label = (C.WORKSPACES.find((w) => w.id === data.workspace) || {}).label || data.workspace;
+        st.textContent = "Tidied - I'd send this to " + label + ". Change it if I'm wrong.";
+      } else {
+        st.textContent = "Tidied - check it reads right.";
+      }
+    } catch (e) {
+      st.textContent = "Couldn't tidy that - you can still send it as-is.";
+    } finally {
+      $("tidyBtn").disabled = false;
+    }
+  });
+
   $("sendTaskBtn").addEventListener("click", async () => {
     const workspace = $("workspaceSelect").value;
     const task = $("taskText").value.trim();
@@ -383,8 +415,36 @@
   $("chatSendBtn").addEventListener("click", () => sendChat($("chatInput").value));
   $("chatInput").addEventListener("keydown", (e) => { if (e.key === "Enter") sendChat($("chatInput").value); });
   document.querySelectorAll(".chip").forEach((c) =>
-    c.addEventListener("click", () => sendChat(c.dataset.chip))
+    c.addEventListener("click", () =>
+      c.dataset.chip === "__brief" ? morningBrief() : sendChat(c.dataset.chip))
   );
+
+  /* ---------- Morning brief (Slice 5) - fetched server-side, spoken aloud ---------- */
+  let briefRunning = false;
+  async function morningBrief() {
+    if (briefRunning) return;
+    briefRunning = true;
+    addBubble("user", "Morning brief, please");
+    const typing = addBubble("assistant", "Pulling your brief together...", { noListen: true });
+    typing.classList.add("typing");
+    try {
+      const res = await fetch(webhook("brief"), {
+        method: "POST", headers: authHeaders({ "Content-Type": "application/json" }),
+        body: "{}",
+      });
+      if (!res.ok) throw new Error("brief failed");
+      const data = await res.json();
+      const brief = data.brief || "I couldn't put a brief together just now - try again in a minute.";
+      typing.remove();
+      addBubble("assistant", brief);
+      speak(brief); // the point of the brief is hearing it - always spoken
+    } catch (e) {
+      typing.remove();
+      addBubble("assistant", "I couldn't fetch your brief - check your connection and try again.");
+    } finally {
+      briefRunning = false;
+    }
+  }
 
   const chatRec = makeRecorder(async (blob) => {
     try { const text = await transcribe(blob); if (text) sendChat(text); } catch (_) {}
