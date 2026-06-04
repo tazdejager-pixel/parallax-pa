@@ -44,6 +44,14 @@
         </div>
 
         <div class="record-row">
+          <button id="tidyBtn" class="record-btn" aria-label="Tidy up my words">
+            <span class="mic-icon">&#10024;</span>
+            <span>Tidy up my words</span>
+          </button>
+          <span id="tidyStatus" class="record-status"></span>
+        </div>
+
+        <div class="record-row">
           <button id="attachBtn" class="record-btn" aria-label="Attach photos or documents">
             <span class="mic-icon">&#128206;</span>
             <span>Attach photos or files</span>
@@ -67,6 +75,7 @@
         </div>
       </div>
       <div class="chips" id="chatChips">
+        <button class="chip" data-chip="__brief">&#9728;&#65039; Morning brief</button>
         <button class="chip" data-chip="What's on my calendar today and tomorrow?">Today</button>
         <button class="chip" data-chip="Any new leads in the last 24 hours?">New leads</button>
         <button class="chip" data-chip="Give me a status of my active plans.">Plan status</button>
