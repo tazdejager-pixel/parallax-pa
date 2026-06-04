@@ -14,10 +14,14 @@ window.PA_CONFIG = {
     chat:       "/pa-chat",        // Slice 2
     speak:      "/pa-speak",       // Slice 3 (text -> audio)
     subscribe:  "/pa-subscribe",   // Slice 4 (push registration)
+    structure:  "/pa-structure",   // Slice 5 (tidy a rambled note + suggest workspace)
+    brief:      "/pa-brief",       // Slice 5 (spoken morning brief)
   },
 
   // Workspaces a task can be routed to (writes to workspace-registry/inbox/).
+  // "auto" = the backend picks the right one from the task text (Slice 5).
   WORKSPACES: [
+    { id: "auto",      label: "Auto - pick for me" },
     { id: "parallax",  label: "Parallax" },
     { id: "launcht",   label: "Launcht" },
     { id: "fueltap",   label: "FuelTap" },
