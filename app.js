@@ -213,7 +213,7 @@
     if (!message.trim()) return;
     addBubble("user", message);
     $("chatInput").value = "";
-    try { await sb.from("pa_messages").insert({ role: "user", content: message }); } catch (_) {}
+    // history is stored server-side by the PA - Chat workflow (both roles)
     const typing = addBubble("assistant", "...", { noListen: true });
     typing.classList.add("typing");
     try {
@@ -226,7 +226,6 @@
       const reply = data.reply || data.text || "(no reply)";
       typing.remove();
       addBubble("assistant", reply);
-      try { await sb.from("pa_messages").insert({ role: "assistant", content: reply }); } catch (_) {}
       if (listenDefault) speak(reply);
     } catch (e) {
       typing.remove();
