@@ -67,6 +67,22 @@ body {
 .record-status { font-size: 13px; color: var(--charcoal-soft); }
 @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.65; } }
 
+/* Attachments (Slice 1b) */
+.attach-chips { display: flex; flex-wrap: wrap; gap: 8px; margin: 4px 0 0; }
+.att-chip {
+  display: inline-flex; align-items: center; gap: 7px; max-width: 100%;
+  background: var(--white); border: 1px solid var(--line); border-radius: 999px;
+  padding: 7px 8px 7px 12px; font-size: 13px; color: var(--charcoal);
+}
+.att-chip .att-name { max-width: 180px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.att-remove {
+  background: var(--cream-2); border: none; color: var(--charcoal-soft);
+  width: 22px; height: 22px; border-radius: 50%; font-size: 12px; cursor: pointer;
+  display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+}
+.att-remove:active { background: var(--coral); color: var(--white); }
+.att-count { margin-left: 8px; color: var(--steel); font-weight: 600; }
+
 .primary-btn {
   width: 100%; margin-top: 20px; background: var(--coral); color: var(--white);
   border: none; border-radius: var(--radius); padding: 16px; font-size: 17px; font-weight: 700; cursor: pointer;

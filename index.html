@@ -43,6 +43,17 @@
           <span id="recordStatus" class="record-status"></span>
         </div>
 
+        <div class="record-row">
+          <button id="attachBtn" class="record-btn" aria-label="Attach photos or documents">
+            <span class="mic-icon">&#128206;</span>
+            <span>Attach photos or files</span>
+          </button>
+          <span id="attachStatus" class="record-status"></span>
+        </div>
+        <input id="attachInput" type="file" multiple
+               accept="image/*,.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.csv,.txt" hidden>
+        <div id="attachChips" class="attach-chips"></div>
+
         <button id="sendTaskBtn" class="primary-btn">Send task</button>
         <div id="sendResult" class="result-line"></div>
       </div>

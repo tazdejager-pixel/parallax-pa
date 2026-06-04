@@ -145,22 +145,94 @@
   }
   $("recordBtn").addEventListener("click", toggleSendRecord);
 
+  /* ---------- Attachments (Slice 1b) ---------- */
+  const ATT_BUCKET = "pa-attachments";
+  const ATT_MAX_FILES = 10;
+  const ATT_MAX_BYTES = 25 * 1024 * 1024; // matches the bucket's server-side cap
+  let taskAttachments = []; // { path, name, type, size }
+  let taskDraftId = null;   // uuid folder key, new per task
+  let uploadsInFlight = 0;
+
+  function renderAttachChips() {
+    const wrap = $("attachChips");
+    wrap.innerHTML = "";
+    taskAttachments.forEach((a) => {
+      const chip = document.createElement("div");
+      chip.className = "att-chip";
+      const icon = document.createElement("span");
+      icon.textContent = (a.type || "").startsWith("image/") ? "\u{1F5BC}" : "\u{1F4C4}";
+      const label = document.createElement("span");
+      label.className = "att-name";
+      label.textContent = a.name;
+      const x = document.createElement("button");
+      x.className = "att-remove";
+      x.setAttribute("aria-label", "Remove " + a.name);
+      x.textContent = "✕";
+      x.addEventListener("click", async () => {
+        taskAttachments = taskAttachments.filter((t) => t.path !== a.path);
+        renderAttachChips();
+        try { await sb.storage.from(ATT_BUCKET).remove([a.path]); } catch (_) {}
+      });
+      chip.appendChild(icon); chip.appendChild(label); chip.appendChild(x);
+      wrap.appendChild(chip);
+    });
+  }
+
+  $("attachBtn").addEventListener("click", () => {
+    const st = $("attachStatus");
+    if (!session) { st.textContent = "Sign in first."; return; }
+    st.textContent = "";
+    $("attachInput").click();
+  });
+
+  $("attachInput").addEventListener("change", async (e) => {
+    const files = Array.from(e.target.files || []);
+    e.target.value = ""; // allow re-picking the same file
+    const st = $("attachStatus");
+    for (const file of files) {
+      if (taskAttachments.length >= ATT_MAX_FILES) { st.textContent = "Max " + ATT_MAX_FILES + " files per task."; break; }
+      if (file.size > ATT_MAX_BYTES) { st.textContent = file.name + " is over 25 MB - skipped."; continue; }
+      if (!taskDraftId) taskDraftId = crypto.randomUUID();
+      // safe storage key: keep letters/digits/dot/dash/underscore
+      let name = (file.name || "file").replace(/[^\w.\-]+/g, "_").slice(0, 100) || "file";
+      let n = 1;
+      while (taskAttachments.some((a) => a.name === name)) name = (n++) + "-" + name;
+      const path = "tasks/" + taskDraftId + "/" + name;
+      uploadsInFlight++;
+      st.textContent = "Uploading " + name + "...";
+      try {
+        const { error } = await sb.storage.from(ATT_BUCKET)
+          .upload(path, file, { contentType: file.type || "application/octet-stream" });
+        if (error) throw error;
+        taskAttachments.push({ path, name, type: file.type || "application/octet-stream", size: file.size });
+        renderAttachChips();
+        st.textContent = "";
+      } catch (err) {
+        st.textContent = "Couldn't upload " + name + " - try again.";
+      } finally {
+        uploadsInFlight--;
+      }
+    }
+  });
+
   $("sendTaskBtn").addEventListener("click", async () => {
     const workspace = $("workspaceSelect").value;
     const task = $("taskText").value.trim();
     const out = $("sendResult");
     if (!task) { out.className = "result-line err"; out.textContent = "Type or record a task first."; return; }
+    if (uploadsInFlight > 0) { out.className = "result-line err"; out.textContent = "Wait a moment - a file is still uploading."; return; }
     $("sendTaskBtn").disabled = true;
     out.className = "result-line"; out.textContent = "Sending...";
     try {
       const res = await fetch(webhook("sendTask"), {
         method: "POST", headers: authHeaders({ "Content-Type": "application/json" }),
-        body: JSON.stringify({ workspace, task, source: taskHasVoice ? "voice" : "text" }),
+        body: JSON.stringify({ workspace, task, source: taskHasVoice ? "voice" : "text", attachments: taskAttachments }),
       });
       if (!res.ok) throw new Error("send failed");
       out.className = "result-line ok"; out.textContent = "Sent. It'll be picked up within the hour.";
       $("taskText").value = "";
       taskHasVoice = false;
+      taskAttachments = []; taskDraftId = null; renderAttachChips();
       // the workflow records the task server-side; refresh the inbox badge
       loadInbox();
     } catch (e) {
@@ -272,10 +344,12 @@
         const card = document.createElement("div");
         card.className = "inbox-card";
         const ws = (C.WORKSPACES.find((w) => w.id === t.workspace) || {}).label || t.workspace;
+        const attCount = Array.isArray(t.attachments) ? t.attachments.length : 0;
+        const attIcon = attCount ? '<span class="att-count">&#128206;' + attCount + '</span>' : '';
         card.innerHTML =
           '<div class="ws">' + ws + '</div>' +
           '<div class="txt">' + escapeHtml(t.task_text) + '</div>' +
-          '<div class="meta"><span>' + new Date(t.created_at).toLocaleString() + '</span>' +
+          '<div class="meta"><span>' + new Date(t.created_at).toLocaleString() + attIcon + '</span>' +
           '<span class="status-pill ' + t.status + '">' + t.status.replace("_", " ") + '</span></div>';
         list.appendChild(card);
       });
