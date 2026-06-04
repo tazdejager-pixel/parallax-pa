@@ -75,7 +75,83 @@
       const { data } = await sb.from("pa_settings").select("listen_default").eq("id", 1).single();
       if (data) { listenDefault = !!data.listen_default; $("listenDefault").checked = listenDefault; }
     } catch (_) {}
+    syncPushUI();
   }
+
+  /* ---------- Push notifications (Slice 4) ---------- */
+  function pushSupported() {
+    return "serviceWorker" in navigator && "PushManager" in window && "Notification" in window;
+  }
+  function urlB64ToUint8Array(b64) {
+    const pad = "=".repeat((4 - (b64.length % 4)) % 4);
+    const raw = atob((b64 + pad).replace(/-/g, "+").replace(/_/g, "/"));
+    return Uint8Array.from(raw, (c) => c.charCodeAt(0));
+  }
+  async function getSubscription() {
+    const reg = await navigator.serviceWorker.ready;
+    return reg.pushManager.getSubscription();
+  }
+  async function saveSubscription(sub) {
+    const j = sub.toJSON();
+    await sb.from("pa_push_subscriptions").upsert(
+      { endpoint: sub.endpoint, p256dh: j.keys.p256dh, auth: j.keys.auth },
+      { onConflict: "endpoint" });
+  }
+  async function enablePush() {
+    const note = $("pushNote");
+    if (!pushSupported()) {
+      note.textContent = "This phone/browser can't do app notifications. On iPhone, add the app to your Home Screen first, then try again.";
+      return false;
+    }
+    const perm = await Notification.requestPermission();
+    if (perm !== "granted") {
+      note.textContent = "Notifications are blocked. Allow them for this app in your phone settings, then flip this switch again.";
+      return false;
+    }
+    try {
+      const reg = await navigator.serviceWorker.ready;
+      const sub = (await reg.pushManager.getSubscription()) ||
+        (await reg.pushManager.subscribe({
+          userVisibleOnly: true,
+          applicationServerKey: urlB64ToUint8Array(C.VAPID_PUBLIC_KEY),
+        }));
+      await saveSubscription(sub);
+      note.textContent = "Notifications are on for this phone.";
+      return true;
+    } catch (e) {
+      note.textContent = "Couldn't switch notifications on - try again.";
+      return false;
+    }
+  }
+  async function disablePush() {
+    try {
+      const sub = await getSubscription();
+      if (sub) {
+        await sb.from("pa_push_subscriptions").delete().eq("endpoint", sub.endpoint);
+        await sub.unsubscribe();
+      }
+    } catch (_) {}
+    $("pushNote").textContent = "Get a notification when Claude needs a decision or finishes a task.";
+  }
+  async function syncPushUI() {
+    try {
+      const on = pushSupported() && Notification.permission === "granted" && !!(await getSubscription());
+      $("pushToggle").checked = on;
+      if (on && session) {
+        // keep the saved address fresh (endpoints can rotate)
+        const sub = await getSubscription();
+        if (sub) saveSubscription(sub);
+      }
+    } catch (_) {}
+  }
+  $("pushToggle").addEventListener("change", async (e) => {
+    if (e.target.checked) {
+      const ok = await enablePush();
+      if (!ok) e.target.checked = false;
+    } else {
+      await disablePush();
+    }
+  });
 
   /* ---------- Workspace picker ---------- */
   (function fillWorkspaces() {

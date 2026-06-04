@@ -26,6 +26,6 @@ window.PA_CONFIG = {
     { id: "attorney",  label: "Attorney" },
   ],
 
-  // Web Push public key (VAPID). Filled in Slice 4.
-  VAPID_PUBLIC_KEY: "",
+  // Web Push public key (VAPID). The private half lives server-side (Supabase edge function pa-push).
+  VAPID_PUBLIC_KEY: "BE9cLY92lQbdB18YBS7qDzLDO45iXUiwtkcCV3fgS-yD11k51lBXHL5S6oyW1ts8BNaVkyD4xQhEifbvF93kmuA",
 };
