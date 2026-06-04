@@ -20,13 +20,14 @@ window.PA_CONFIG = {
 
   // Workspaces a task can be routed to (writes to workspace-registry/inbox/).
   // "auto" = the backend picks the right one from the task text (Slice 5).
+  // Note: clients (Wild Eagle, MiSure, ...) are NOT workspaces - client work goes to ParallaxAI.
   WORKSPACES: [
     { id: "auto",      label: "Auto - pick for me" },
-    { id: "parallax",  label: "Parallax" },
-    { id: "launcht",   label: "Launcht" },
+    { id: "parallax",  label: "ParallaxAI" },
+    { id: "launcht",   label: "Launcht Marketing" },
     { id: "fueltap",   label: "FuelTap" },
-    { id: "wildeagle", label: "Wild Eagle" },
     { id: "qrtip",     label: "QR-TIP" },
+    { id: "tarryn",    label: "Tarryn" },
     { id: "attorney",  label: "Attorney" },
   ],
 
