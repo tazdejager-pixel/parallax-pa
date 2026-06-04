@@ -157,3 +157,7 @@ body {
   color: var(--charcoal);
 }
 .login-input:focus { outline: 2px solid var(--steel-light); background: var(--white); }
+
+/* The hidden attribute must always win, even over display:flex rules above.
+   Without this, panels styled display:flex stay visible after JS sets .hidden = true. */
+[hidden] { display: none !important; }
