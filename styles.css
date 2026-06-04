@@ -132,3 +132,28 @@ body {
 .toggle-row { display: flex; align-items: center; justify-content: space-between; font-size: 15px; padding: 8px 0; }
 .toggle-row input { width: 22px; height: 22px; }
 .sheet-note { font-size: 13px; color: var(--charcoal-soft); margin: 4px 0 0; }
+
+/* Sign-in screen */
+.login-screen {
+  position: fixed; inset: 0; z-index: 50;
+  background: var(--cream);
+  display: flex; align-items: center; justify-content: center;
+  padding: 24px;
+}
+.login-card {
+  width: 100%; max-width: 340px;
+  background: var(--white);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 28px 22px calc(22px + var(--safe-bottom));
+  box-shadow: 0 10px 30px rgba(47, 72, 88, 0.12);
+}
+.login-brand { color: var(--steel); margin-bottom: 4px; }
+.login-sub { margin: 0 0 18px; color: var(--charcoal-soft); font-size: 14px; }
+.login-input {
+  width: 100%; padding: 12px 14px; margin-bottom: 14px;
+  border: 1px solid var(--line); border-radius: 10px;
+  font-size: 16px; background: var(--cream);
+  color: var(--charcoal);
+}
+.login-input:focus { outline: 2px solid var(--steel-light); background: var(--white); }

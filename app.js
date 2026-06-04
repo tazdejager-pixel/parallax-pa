@@ -8,6 +8,44 @@
 
   let listenDefault = false;
 
+  /* ---------- Auth (single user - Tarryn) ---------- */
+  let session = null;
+  function authHeaders(extra) {
+    const h = Object.assign({}, extra || {});
+    if (session) h["Authorization"] = "Bearer " + session.access_token;
+    return h;
+  }
+  function updateAuthUI() {
+    $("loginScreen").hidden = !!session;
+    $("signedInAs").textContent = session ? "Signed in as " + session.user.email : "";
+  }
+  sb.auth.onAuthStateChange((_event, s) => { session = s; updateAuthUI(); });
+  async function initAuth() {
+    const { data } = await sb.auth.getSession();
+    session = data.session;
+    updateAuthUI();
+    if (session) loadSettings();
+  }
+  async function doLogin() {
+    const email = $("loginEmail").value.trim();
+    const password = $("loginPassword").value;
+    const err = $("loginError");
+    if (!email || !password) { err.textContent = "Enter your email and password."; return; }
+    $("loginBtn").disabled = true;
+    err.textContent = "";
+    const { error } = await sb.auth.signInWithPassword({ email, password });
+    $("loginBtn").disabled = false;
+    if (error) { err.textContent = "Sign-in failed - check email and password."; return; }
+    $("loginPassword").value = "";
+    loadSettings();
+  }
+  $("loginBtn").addEventListener("click", doLogin);
+  $("loginPassword").addEventListener("keydown", (e) => { if (e.key === "Enter") doLogin(); });
+  $("signOutBtn").addEventListener("click", async () => {
+    await sb.auth.signOut();
+    $("settingsSheet").hidden = true;
+  });
+
   /* ---------- Tab navigation ---------- */
   function switchTab(tab) {
     document.querySelectorAll(".tab-panel").forEach((p) => p.classList.remove("active"));
@@ -69,22 +107,24 @@
   async function transcribe(blob) {
     const fd = new FormData();
     fd.append("audio", blob, "voice.webm");
-    const res = await fetch(webhook("transcribe"), { method: "POST", body: fd });
+    const res = await fetch(webhook("transcribe"), { method: "POST", headers: authHeaders(), body: fd });
     if (!res.ok) throw new Error("transcribe failed");
     const data = await res.json();
     return data.text || data.transcript || "";
   }
 
   /* ---------- SEND TASK ---------- */
+  let taskHasVoice = false;
   const sendRec = makeRecorder(async (blob) => {
     $("recordStatus").textContent = "Transcribing...";
     try {
       const text = await transcribe(blob);
       const ta = $("taskText");
       ta.value = ta.value ? ta.value + " " + text : text;
+      if (text) taskHasVoice = true;
       $("recordStatus").textContent = "";
     } catch (e) {
-      $("recordStatus").textContent = "Voice unavailable (backend not live yet)";
+      $("recordStatus").textContent = "Voice didn't come through - try again.";
     }
   });
   let sendRecording = false;
@@ -114,16 +154,18 @@
     out.className = "result-line"; out.textContent = "Sending...";
     try {
       const res = await fetch(webhook("sendTask"), {
-        method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ workspace, task, source: sendRecording ? "voice" : "text" }),
+        method: "POST", headers: authHeaders({ "Content-Type": "application/json" }),
+        body: JSON.stringify({ workspace, task, source: taskHasVoice ? "voice" : "text" }),
       });
       if (!res.ok) throw new Error("send failed");
-      out.className = "result-line ok"; out.textContent = "Sent. It'll be picked up shortly.";
+      out.className = "result-line ok"; out.textContent = "Sent. It'll be picked up within the hour.";
       $("taskText").value = "";
-      // optimistic local record
-      try { await sb.from("pa_tasks").insert({ workspace, task_text: task, source: "text", status: "queued" }); } catch (_) {}
+      taskHasVoice = false;
+      // the workflow records the task server-side; refresh the inbox badge
+      loadInbox();
     } catch (e) {
-      out.className = "result-line err"; out.textContent = "Backend not live yet - this will work once the n8n workflow is deployed.";
+      out.className = "result-line err";
+      out.textContent = session ? "Couldn't send - check your connection and try again." : "Please sign in first.";
     } finally {
       $("sendTaskBtn").disabled = false;
     }
@@ -153,7 +195,7 @@
   async function speak(text) {
     try {
       const res = await fetch(webhook("speak"), {
-        method: "POST", headers: { "Content-Type": "application/json" },
+        method: "POST", headers: authHeaders({ "Content-Type": "application/json" }),
         body: JSON.stringify({ text }),
       });
       if (!res.ok) throw new Error("tts failed");
@@ -176,7 +218,7 @@
     typing.classList.add("typing");
     try {
       const res = await fetch(webhook("chat"), {
-        method: "POST", headers: { "Content-Type": "application/json" },
+        method: "POST", headers: authHeaders({ "Content-Type": "application/json" }),
         body: JSON.stringify({ message }),
       });
       if (!res.ok) throw new Error("chat failed");
@@ -253,5 +295,5 @@
   }
 
   /* ---------- Init ---------- */
-  loadSettings();
+  initAuth();
 })();

@@ -103,7 +103,26 @@
         <input type="checkbox" id="listenDefault">
       </label>
       <p class="sheet-note">When off, replies are text with a "listen" button so you choose per message.</p>
+      <p id="signedInAs" class="sheet-note"></p>
+      <button id="signOutBtn" class="secondary-btn">Sign out</button>
       <button id="closeSettings" class="secondary-btn">Done</button>
+    </div>
+  </div>
+
+  <!-- Sign-in screen -->
+  <div id="loginScreen" class="login-screen" hidden>
+    <div class="login-card">
+      <div class="brand login-brand">
+        <span class="brand-mark">Parallax</span>
+        <span class="brand-pa">PA</span>
+      </div>
+      <p class="login-sub">Sign in to your assistant.</p>
+      <label class="field-label" for="loginEmail">Email</label>
+      <input id="loginEmail" class="login-input" type="email" autocomplete="username" inputmode="email">
+      <label class="field-label" for="loginPassword">Password</label>
+      <input id="loginPassword" class="login-input" type="password" autocomplete="current-password">
+      <button id="loginBtn" class="primary-btn">Sign in</button>
+      <div id="loginError" class="result-line err"></div>
     </div>
   </div>
 
