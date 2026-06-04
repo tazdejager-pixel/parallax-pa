@@ -1,6 +1,6 @@
 {
-  "name": "Parallax PA",
-  "short_name": "Parallax PA",
+  "name": "My PA",
+  "short_name": "My PA",
   "description": "Tarryn's AI personal assistant - speak or type tasks, chat, and get answers from your business.",
   "start_url": "./index.html",
   "scope": "./",

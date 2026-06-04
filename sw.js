@@ -1,5 +1,5 @@
 /* Parallax PA - service worker (offline shell + push) */
-const CACHE = "parallax-pa-v4";
+const CACHE = "parallax-pa-v5";
 const SHELL = [
   "./", "./index.html", "./styles.css", "./app.js", "./config.js",
   "./manifest.webmanifest", "./icons/icon-192.png", "./icons/icon-512.png",
@@ -28,10 +28,10 @@ self.addEventListener("fetch", (e) => {
 
 /* Web Push - executor decision notifications */
 self.addEventListener("push", (e) => {
-  let payload = { title: "Parallax PA", body: "You have a new message." };
+  let payload = { title: "My PA", body: "You have a new message." };
   try { if (e.data) payload = e.data.json(); } catch (_) {}
   e.waitUntil(
-    self.registration.showNotification(payload.title || "Parallax PA", {
+    self.registration.showNotification(payload.title || "My PA", {
       body: payload.body || "",
       icon: "./icons/icon-192.png",
       badge: "./icons/icon-192.png",
