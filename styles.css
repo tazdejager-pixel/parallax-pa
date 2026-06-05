@@ -130,6 +130,15 @@ body {
 .status-pill.done { background: #d6efdf; color: var(--good); }
 .status-pill.error { background: #f6d9d2; color: var(--coral-dark); }
 .decision-card { border-left: 4px solid var(--coral); }
+.decision-card .ws { color: var(--coral-dark); }
+.decision-card .recap { font-size: 12px; color: var(--charcoal-soft); margin-top: 4px; font-style: italic; }
+.decision-card.answered { border-left-color: var(--steel); opacity: 0.8; }
+.opt-row { display: flex; gap: 8px; margin: 10px 0 4px; flex-wrap: wrap; }
+.opt-btn { flex: 1; min-width: 70px; padding: 10px 14px; border-radius: 10px; border: 1px solid var(--line); background: var(--cream-2); font-weight: 600; cursor: pointer; font-size: 14px; }
+.opt-btn:active { background: var(--steel); color: var(--white); }
+.ans-row { display: flex; gap: 8px; margin: 8px 0 6px; }
+.ans-row input { flex: 1; border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; font-size: 14px; min-width: 0; background: var(--white); }
+.ans-row .ans-send { background: var(--coral); color: var(--white); border: none; border-radius: 10px; padding: 10px 14px; font-weight: 600; cursor: pointer; font-size: 14px; }
 .decision-actions { display: flex; gap: 8px; margin-top: 10px; flex-wrap: wrap; }
 .decision-actions button { flex: 1; min-width: 70px; padding: 10px; border-radius: 10px; border: 1px solid var(--line); background: var(--cream-2); font-weight: 600; cursor: pointer; }
 
