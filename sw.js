@@ -1,5 +1,5 @@
 /* Parallax PA - service worker (offline shell + push) */
-const CACHE = "parallax-pa-v9";
+const CACHE = "parallax-pa-v10";
 const SHELL = [
   "./", "./index.html", "./styles.css", "./app.js", "./config.js",
   "./manifest.webmanifest", "./icons/icon-192.png", "./icons/icon-512.png",
