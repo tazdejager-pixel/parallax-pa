@@ -552,6 +552,12 @@
   }
   function escapeHtml(s) { const d = document.createElement("div"); d.textContent = s; return d.innerHTML; }
 
+  /* ---------- Offline banner (Slice 6) ---------- */
+  function syncOnlineUI() { $("offlineBanner").hidden = navigator.onLine; }
+  window.addEventListener("online", syncOnlineUI);
+  window.addEventListener("offline", syncOnlineUI);
+  syncOnlineUI();
+
   /* ---------- Service worker ---------- */
   if ("serviceWorker" in navigator) {
     navigator.serviceWorker.register("./sw.js").catch(() => {});
