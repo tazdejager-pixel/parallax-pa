@@ -54,6 +54,7 @@
       b.classList.toggle("active", b.dataset.tab === tab)
     );
     if (tab === "inbox") loadInbox();
+    if (tab === "tasks") loadTasks();
     if (tab === "chat") loadChatHistory();
   }
   document.querySelectorAll(".nav-btn").forEach((b) =>
@@ -76,6 +77,9 @@
       if (data) { listenDefault = !!data.listen_default; $("listenDefault").checked = listenDefault; }
     } catch (_) {}
     syncPushUI();
+    // refresh both badges on open so waiting cards/tasks show without visiting the tabs
+    loadInbox();
+    loadTasks();
   }
 
   /* ---------- Push notifications (Slice 4) ---------- */
@@ -337,12 +341,12 @@
         body: JSON.stringify({ workspace, task, source: taskHasVoice ? "voice" : "text", attachments: taskAttachments }),
       });
       if (!res.ok) throw new Error("send failed");
-      out.className = "result-line ok"; out.textContent = "Sent. It'll be picked up within the hour.";
+      out.className = "result-line ok"; out.textContent = "Sent. It'll be picked up within the hour - track it on the Tasks tab.";
       $("taskText").value = "";
       taskHasVoice = false;
       taskAttachments = []; taskDraftId = null; renderAttachChips();
-      // the workflow records the task server-side; refresh the inbox badge
-      loadInbox();
+      // the workflow records the task server-side; refresh the Tasks badge
+      loadTasks();
     } catch (e) {
       out.className = "result-line err";
       out.textContent = session ? "Couldn't send - check your connection and try again." : "Please sign in first.";
@@ -469,7 +473,9 @@
     } catch (_) {}
   }
 
-  /* ---------- INBOX (decision cards + task status) ---------- */
+  /* ---------- INBOX (cards FROM the PA) + TASKS (what Tarryn sent) ----------
+     Split per Tarryn's 2026-06-05 card answer: Inbox = decision cards/messages
+     from the PA; Tasks = the tasks and plans she sends, with status. */
   function wsLabel(id) { return (C.WORKSPACES.find((w) => w.id === id) || {}).label || id; }
 
   async function answerDecision(id, answer, cardEl) {
@@ -498,7 +504,8 @@
       (d.layman_recap ? '<div class="recap">' + escapeHtml(d.layman_recap) + '</div>' : '') +
       '<div class="txt">' + escapeHtml(d.question) + '</div>' +
       '<div class="opt-row"></div>' +
-      '<div class="ans-row"><input type="text" placeholder="Or type / dictate an answer..." enterkeyhint="send"><button class="ans-send">Send</button></div>' +
+      '<div class="ans-row"><button class="icon-btn mic-btn ans-mic" aria-label="Speak your answer">&#127908;</button>' +
+      '<input type="text" placeholder="Or type / speak an answer..." enterkeyhint="send"><button class="ans-send">Send</button></div>' +
       '<div class="meta"><span>' + new Date(d.created_at).toLocaleString() + '</span></div>';
     const optRow = card.querySelector(".opt-row");
     opts.forEach((o) => {
@@ -512,42 +519,78 @@
     const sendBtn = card.querySelector(".ans-send");
     sendBtn.addEventListener("click", () => answerDecision(d.id, input.value, card));
     input.addEventListener("keydown", (e) => { if (e.key === "Enter") answerDecision(d.id, input.value, card); });
+    // Voice answer: record -> Whisper -> transcript lands in the input so she
+    // can check or edit it, then taps Send. (Same recorder as the Send tab.)
+    const micBtn = card.querySelector(".ans-mic");
+    let micRecording = false;
+    const micRec = makeRecorder(async (blob) => {
+      input.placeholder = "Transcribing...";
+      try {
+        const text = await transcribe(blob);
+        if (text) input.value = input.value ? input.value + " " + text : text;
+        input.placeholder = "Or type / speak an answer...";
+        input.focus();
+      } catch (_) {
+        input.placeholder = "Voice didn't come through - try again.";
+      }
+    });
+    micBtn.addEventListener("click", () => {
+      if (!micRecording) {
+        micRec.start().then(() => { micRecording = true; micBtn.classList.add("recording"); }).catch(() => {});
+      } else {
+        micRec.stop(); micRecording = false; micBtn.classList.remove("recording");
+      }
+    });
     return card;
   }
 
   async function loadInbox() {
     const list = $("inboxList");
     try {
-      const [dec, tasks] = await Promise.all([
-        sb.from("pa_decisions").select("*").eq("status", "open").order("created_at", { ascending: false }).limit(20),
-        sb.from("pa_tasks").select("*").order("created_at", { ascending: false }).limit(30),
-      ]);
-      const decisions = dec.data || [];
-      const taskRows = tasks.data || [];
-      if (!decisions.length && !taskRows.length) { list.innerHTML = '<div class="inbox-empty">Nothing here yet.</div>'; updateInboxBadge(0, 0); return; }
-      list.innerHTML = "";
-      decisions.forEach((d) => list.appendChild(renderDecisionCard(d)));
-      taskRows.forEach((t) => {
-        const card = document.createElement("div");
-        card.className = "inbox-card";
-        const attCount = Array.isArray(t.attachments) ? t.attachments.length : 0;
-        const attIcon = attCount ? '<span class="att-count">&#128206;' + attCount + '</span>' : '';
-        card.innerHTML =
-          '<div class="ws">' + wsLabel(t.workspace) + '</div>' +
-          '<div class="txt">' + escapeHtml(t.task_text) + '</div>' +
-          '<div class="meta"><span>' + new Date(t.created_at).toLocaleString() + attIcon + '</span>' +
-          '<span class="status-pill ' + t.status + '">' + t.status.replace("_", " ") + '</span></div>';
-        list.appendChild(card);
-      });
-      const openTasks = taskRows.filter((t) => t.status === "queued" || t.status === "picked_up").length;
-      updateInboxBadge(decisions.length, openTasks);
+      const { data } = await sb.from("pa_decisions").select("*").eq("status", "open").order("created_at", { ascending: false }).limit(20);
+      const decisions = data || [];
+      if (!decisions.length) {
+        list.innerHTML = '<div class="inbox-empty">Nothing waiting on you.</div>';
+      } else {
+        list.innerHTML = "";
+        decisions.forEach((d) => list.appendChild(renderDecisionCard(d)));
+      }
+      setBadge("inboxBadge", decisions.length);
     } catch (e) {
       list.innerHTML = '<div class="inbox-empty">Could not load - check connection.</div>';
     }
   }
-  function updateInboxBadge(decisions, openTasks) {
-    const badge = $("inboxBadge");
-    const n = decisions + openTasks;
+
+  async function loadTasks() {
+    const list = $("tasksList");
+    try {
+      const { data } = await sb.from("pa_tasks").select("*").order("created_at", { ascending: false }).limit(30);
+      const taskRows = data || [];
+      if (!taskRows.length) {
+        list.innerHTML = '<div class="inbox-empty">Nothing here yet - send me a task from the Send tab.</div>';
+      } else {
+        list.innerHTML = "";
+        taskRows.forEach((t) => {
+          const card = document.createElement("div");
+          card.className = "inbox-card";
+          const attCount = Array.isArray(t.attachments) ? t.attachments.length : 0;
+          const attIcon = attCount ? '<span class="att-count">&#128206;' + attCount + '</span>' : '';
+          card.innerHTML =
+            '<div class="ws">' + wsLabel(t.workspace) + '</div>' +
+            '<div class="txt">' + escapeHtml(t.task_text) + '</div>' +
+            '<div class="meta"><span>' + new Date(t.created_at).toLocaleString() + attIcon + '</span>' +
+            '<span class="status-pill ' + t.status + '">' + t.status.replace("_", " ") + '</span></div>';
+          list.appendChild(card);
+        });
+      }
+      setBadge("tasksBadge", taskRows.filter((t) => t.status === "queued" || t.status === "picked_up").length);
+    } catch (e) {
+      list.innerHTML = '<div class="inbox-empty">Could not load - check connection.</div>';
+    }
+  }
+
+  function setBadge(id, n) {
+    const badge = $(id);
     if (n > 0) { badge.hidden = false; badge.textContent = n; } else { badge.hidden = true; }
   }
   function escapeHtml(s) { const d = document.createElement("div"); d.textContent = s; return d.innerHTML; }
