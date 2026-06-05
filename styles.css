@@ -28,6 +28,16 @@ body {
 
 #app { display: flex; flex-direction: column; height: 100dvh; }
 
+/* Offline banner (Slice 6) */
+.offline-banner {
+  background: var(--warn);
+  color: var(--white);
+  font-size: 13px;
+  text-align: center;
+  padding: calc(6px + var(--safe-top)) 12px 6px;
+}
+.offline-banner[hidden] { display: none !important; }
+
 /* Header */
 .app-header {
   display: flex; align-items: center; justify-content: space-between;
