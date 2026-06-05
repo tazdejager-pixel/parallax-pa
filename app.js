@@ -469,32 +469,86 @@
     } catch (_) {}
   }
 
-  /* ---------- INBOX ---------- */
+  /* ---------- INBOX (decision cards + task status) ---------- */
+  function wsLabel(id) { return (C.WORKSPACES.find((w) => w.id === id) || {}).label || id; }
+
+  async function answerDecision(id, answer, cardEl) {
+    if (!answer || !answer.trim()) return;
+    cardEl.querySelectorAll("button, input").forEach((el) => (el.disabled = true));
+    try {
+      const { error } = await sb.from("pa_decisions")
+        .update({ status: "answered", answer: answer.trim(), answered_at: new Date().toISOString() })
+        .eq("id", id);
+      if (error) throw error;
+      cardEl.innerHTML = '<div class="ws">Answered</div><div class="txt">Got it - "' + escapeHtml(answer.trim()) + '". I\'ll act on this within the hour.</div>';
+      cardEl.classList.add("answered");
+      setTimeout(loadInbox, 2500);
+    } catch (e) {
+      cardEl.querySelectorAll("button, input").forEach((el) => (el.disabled = false));
+      alert("Couldn't save your answer - check your connection and try again.");
+    }
+  }
+
+  function renderDecisionCard(d) {
+    const card = document.createElement("div");
+    card.className = "inbox-card decision-card";
+    const opts = Array.isArray(d.options) ? d.options : [];
+    card.innerHTML =
+      '<div class="ws">Decision needed - ' + escapeHtml(wsLabel(d.workspace)) + '</div>' +
+      (d.layman_recap ? '<div class="recap">' + escapeHtml(d.layman_recap) + '</div>' : '') +
+      '<div class="txt">' + escapeHtml(d.question) + '</div>' +
+      '<div class="opt-row"></div>' +
+      '<div class="ans-row"><input type="text" placeholder="Or type / dictate an answer..." enterkeyhint="send"><button class="ans-send">Send</button></div>' +
+      '<div class="meta"><span>' + new Date(d.created_at).toLocaleString() + '</span></div>';
+    const optRow = card.querySelector(".opt-row");
+    opts.forEach((o) => {
+      const b = document.createElement("button");
+      b.className = "opt-btn";
+      b.textContent = o;
+      b.addEventListener("click", () => answerDecision(d.id, o, card));
+      optRow.appendChild(b);
+    });
+    const input = card.querySelector("input");
+    const sendBtn = card.querySelector(".ans-send");
+    sendBtn.addEventListener("click", () => answerDecision(d.id, input.value, card));
+    input.addEventListener("keydown", (e) => { if (e.key === "Enter") answerDecision(d.id, input.value, card); });
+    return card;
+  }
+
   async function loadInbox() {
     const list = $("inboxList");
     try {
-      const { data } = await sb.from("pa_tasks").select("*").order("created_at", { ascending: false }).limit(30);
-      if (!data || !data.length) { list.innerHTML = '<div class="inbox-empty">Nothing here yet.</div>'; return; }
+      const [dec, tasks] = await Promise.all([
+        sb.from("pa_decisions").select("*").eq("status", "open").order("created_at", { ascending: false }).limit(20),
+        sb.from("pa_tasks").select("*").order("created_at", { ascending: false }).limit(30),
+      ]);
+      const decisions = dec.data || [];
+      const taskRows = tasks.data || [];
+      if (!decisions.length && !taskRows.length) { list.innerHTML = '<div class="inbox-empty">Nothing here yet.</div>'; updateInboxBadge(0, 0); return; }
       list.innerHTML = "";
-      data.forEach((t) => {
+      decisions.forEach((d) => list.appendChild(renderDecisionCard(d)));
+      taskRows.forEach((t) => {
         const card = document.createElement("div");
         card.className = "inbox-card";
-        const ws = (C.WORKSPACES.find((w) => w.id === t.workspace) || {}).label || t.workspace;
         const attCount = Array.isArray(t.attachments) ? t.attachments.length : 0;
         const attIcon = attCount ? '<span class="att-count">&#128206;' + attCount + '</span>' : '';
         card.innerHTML =
-          '<div class="ws">' + ws + '</div>' +
+          '<div class="ws">' + wsLabel(t.workspace) + '</div>' +
           '<div class="txt">' + escapeHtml(t.task_text) + '</div>' +
           '<div class="meta"><span>' + new Date(t.created_at).toLocaleString() + attIcon + '</span>' +
           '<span class="status-pill ' + t.status + '">' + t.status.replace("_", " ") + '</span></div>';
         list.appendChild(card);
       });
-      const open = data.filter((t) => t.status === "queued" || t.status === "picked_up").length;
-      const badge = $("inboxBadge");
-      if (open > 0) { badge.hidden = false; badge.textContent = open; } else { badge.hidden = true; }
+      const openTasks = taskRows.filter((t) => t.status === "queued" || t.status === "picked_up").length;
+      updateInboxBadge(decisions.length, openTasks);
     } catch (e) {
       list.innerHTML = '<div class="inbox-empty">Could not load - check connection.</div>';
     }
+  }
+  function updateInboxBadge(decisions, openTasks) {
+    const badge = $("inboxBadge");
+    const n = decisions + openTasks;
+    if (n > 0) { badge.hidden = false; badge.textContent = n; } else { badge.hidden = true; }
   }
   function escapeHtml(s) { const d = document.createElement("div"); d.textContent = s; return d.innerHTML; }
 
