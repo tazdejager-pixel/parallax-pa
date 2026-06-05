@@ -480,7 +480,7 @@
         .update({ status: "answered", answer: answer.trim(), answered_at: new Date().toISOString() })
         .eq("id", id);
       if (error) throw error;
-      cardEl.innerHTML = '<div class="ws">Answered</div><div class="txt">Got it - "' + escapeHtml(answer.trim()) + '". I\'ll act on this within the hour.</div>';
+      cardEl.innerHTML = '<div class="ws">Answered</div><div class="txt">Got it - "' + escapeHtml(answer.trim()) + '". I\'ll act on this at my next work cycle (I run every morning and afternoon).</div>';
       cardEl.classList.add("answered");
       setTimeout(loadInbox, 2500);
     } catch (e) {
