@@ -102,6 +102,21 @@
       </div>
     </section>
 
+    <!-- TO-DO tab (shared list - Tarryn and the PA can both add) -->
+    <section id="tab-todo" class="tab-panel">
+      <div class="panel-scroll">
+        <h2 class="panel-title">To-do</h2>
+        <p class="panel-sub">Your shared list - we can both add to it. Tap the circle when something's done.</p>
+        <div class="ans-row todo-add-row">
+          <input id="todoInput" type="text" placeholder="Add something to do..." enterkeyhint="done">
+          <button id="todoAddBtn" class="ans-send">Add</button>
+        </div>
+        <div id="todoList" class="inbox-list">
+          <div class="inbox-empty">Nothing on the list.</div>
+        </div>
+      </div>
+    </section>
+
     <!-- INBOX tab (cards and messages FROM the PA) -->
     <section id="tab-inbox" class="tab-panel">
       <div class="panel-scroll">
@@ -124,6 +139,10 @@
       <button class="nav-btn" data-tab="tasks">
         <span class="nav-icon">&#128203;</span><span class="nav-label">Tasks</span>
         <span id="tasksBadge" class="nav-badge" hidden>0</span>
+      </button>
+      <button class="nav-btn" data-tab="todo">
+        <span class="nav-icon">&#9745;</span><span class="nav-label">To-do</span>
+        <span id="todoBadge" class="nav-badge" hidden>0</span>
       </button>
       <button class="nav-btn" data-tab="inbox">
         <span class="nav-icon">&#128229;</span><span class="nav-label">Inbox</span>
