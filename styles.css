@@ -148,6 +148,15 @@ body {
 .opt-btn:active { background: var(--steel); color: var(--white); }
 .ans-row { display: flex; gap: 8px; margin: 8px 0 6px; align-items: center; }
 .ans-row .ans-mic { flex-shrink: 0; width: 42px; height: 42px; border: 1px solid var(--line); border-radius: 10px; background: var(--white); padding: 0; }
+
+/* To-do tab (shared list) */
+.todo-add-row { margin-bottom: 14px; }
+.todo-row { display: flex; gap: 12px; align-items: flex-start; background: var(--white); border: 1px solid var(--line); border-radius: var(--radius); padding: 12px 14px; margin-bottom: 8px; }
+.todo-tick { flex-shrink: 0; width: 26px; height: 26px; margin-top: 2px; border: 2px solid var(--steel-light); border-radius: 50%; background: var(--white); color: var(--white); font-size: 15px; font-weight: 700; cursor: pointer; padding: 0; line-height: 1; }
+.todo-row.done .todo-tick { background: var(--good); border-color: var(--good); }
+.todo-text { font-size: 15px; }
+.todo-row.done .todo-text { text-decoration: line-through; color: var(--charcoal-soft); }
+.todo-by { font-size: 11px; color: var(--charcoal-soft); margin-top: 3px; }
 .ans-row input { flex: 1; border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; font-size: 14px; min-width: 0; background: var(--white); }
 .ans-row .ans-send { background: var(--coral); color: var(--white); border: none; border-radius: 10px; padding: 10px 14px; font-weight: 600; cursor: pointer; font-size: 14px; }
 .decision-actions { display: flex; gap: 8px; margin-top: 10px; flex-wrap: wrap; }
