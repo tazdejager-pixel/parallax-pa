@@ -55,6 +55,7 @@
     );
     if (tab === "inbox") loadInbox();
     if (tab === "tasks") loadTasks();
+    if (tab === "todo") loadTodos();
     if (tab === "chat") loadChatHistory();
   }
   document.querySelectorAll(".nav-btn").forEach((b) =>
@@ -77,9 +78,10 @@
       if (data) { listenDefault = !!data.listen_default; $("listenDefault").checked = listenDefault; }
     } catch (_) {}
     syncPushUI();
-    // refresh both badges on open so waiting cards/tasks show without visiting the tabs
+    // refresh badges on open so waiting cards/tasks/to-dos show without visiting the tabs
     loadInbox();
     loadTasks();
+    loadTodos();
   }
 
   /* ---------- Push notifications (Slice 4) ---------- */
@@ -593,6 +595,68 @@
     const badge = $(id);
     if (n > 0) { badge.hidden = false; badge.textContent = n; } else { badge.hidden = true; }
   }
+
+  /* ---------- TO-DO (shared list - Tarryn + PA both add; Tarryn ticks off) ---------- */
+  async function loadTodos() {
+    const list = $("todoList");
+    try {
+      const { data } = await sb.from("pa_todos").select("*")
+        .order("done", { ascending: true }).order("created_at", { ascending: false }).limit(60);
+      const todos = data || [];
+      if (!todos.length) {
+        list.innerHTML = '<div class="inbox-empty">Nothing on the list.</div>';
+      } else {
+        list.innerHTML = "";
+        todos.forEach((t) => {
+          const row = document.createElement("div");
+          row.className = "todo-row" + (t.done ? " done" : "");
+          const tick = document.createElement("button");
+          tick.className = "todo-tick";
+          tick.setAttribute("aria-label", t.done ? "Mark as not done" : "Mark as done");
+          tick.textContent = t.done ? "✓" : "";
+          tick.addEventListener("click", async () => {
+            const nowDone = !t.done;
+            try {
+              await sb.from("pa_todos").update({ done: nowDone, done_at: nowDone ? new Date().toISOString() : null }).eq("id", t.id);
+              loadTodos();
+            } catch (_) {}
+          });
+          const label = document.createElement("div");
+          label.className = "todo-text";
+          label.textContent = t.text;
+          const by = document.createElement("div");
+          by.className = "todo-by";
+          by.textContent = (t.added_by === "pa" ? "added by your PA" : "added by you") +
+            " - " + new Date(t.created_at).toLocaleDateString();
+          const main = document.createElement("div");
+          main.className = "todo-main";
+          main.appendChild(label); main.appendChild(by);
+          row.appendChild(tick); row.appendChild(main);
+          list.appendChild(row);
+        });
+      }
+      setBadge("todoBadge", todos.filter((t) => !t.done).length);
+    } catch (e) {
+      list.innerHTML = '<div class="inbox-empty">Could not load - check connection.</div>';
+    }
+  }
+  async function addTodo() {
+    const input = $("todoInput");
+    const text = input.value.trim();
+    if (!text || !session) return;
+    $("todoAddBtn").disabled = true;
+    try {
+      await sb.from("pa_todos").insert({ text, added_by: "tarryn" });
+      input.value = "";
+      loadTodos();
+    } catch (_) {
+      alert("Couldn't add that - check your connection and try again.");
+    } finally {
+      $("todoAddBtn").disabled = false;
+    }
+  }
+  $("todoAddBtn").addEventListener("click", addTodo);
+  $("todoInput").addEventListener("keydown", (e) => { if (e.key === "Enter") addTodo(); });
   function escapeHtml(s) { const d = document.createElement("div"); d.textContent = s; return d.innerHTML; }
 
   /* ---------- Offline banner (Slice 6) ---------- */
