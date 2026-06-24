@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+<meta name="robots" content="noindex, nofollow" />
+<title>FuelTap Assistant - Test</title>
+<style>
+  :root{
+    --bg:#0e1c24; --panel:#10242e; --bot:#16323d; --me:#1f7a5a; --me2:#249a70;
+    --accent:#f5a623; --text:#eaf2f4; --muted:#9fb6bf; --line:#1d3a46;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;height:100%}
+  body{
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    background:var(--bg); color:var(--text);
+    display:flex; flex-direction:column; height:100dvh;
+  }
+  header{
+    background:var(--panel); border-bottom:1px solid var(--line);
+    padding:12px 16px; display:flex; align-items:center; gap:12px; flex:none;
+  }
+  .logo{
+    width:38px;height:38px;border-radius:10px;flex:none;
+    background:linear-gradient(135deg,var(--accent),#e07b2c);
+    display:flex;align-items:center;justify-content:center;font-weight:800;color:#22130a;font-size:18px;
+  }
+  header h1{font-size:16px;margin:0;line-height:1.1}
+  header .sub{font-size:12px;color:var(--muted);margin-top:2px}
+  .banner{
+    background:#3a2a10;color:#ffe2ad;font-size:12.5px;line-height:1.4;
+    padding:9px 16px;border-bottom:1px solid var(--line);flex:none;
+  }
+  .banner b{color:#ffd27a}
+  #chat{flex:1;overflow-y:auto;padding:16px;display:flex;flex-direction:column;gap:12px}
+  .row{display:flex;width:100%}
+  .row.me{justify-content:flex-end}
+  .bubble{
+    max-width:82%;padding:10px 13px;border-radius:16px;font-size:14.5px;line-height:1.45;
+    white-space:pre-wrap;word-wrap:break-word;
+  }
+  .bot .bubble{background:var(--bot);border:1px solid var(--line);border-bottom-left-radius:5px}
+  .me .bubble{background:linear-gradient(135deg,var(--me),var(--me2));color:#fff;border-bottom-right-radius:5px}
+  .meta{font-size:10.5px;color:var(--muted);margin-top:5px}
+  .typing .bubble{color:var(--muted);font-style:italic}
+  footer{
+    background:var(--panel);border-top:1px solid var(--line);padding:10px;display:flex;gap:8px;flex:none;
+  }
+  #msg{
+    flex:1;background:#0c1920;border:1px solid var(--line);color:var(--text);
+    border-radius:22px;padding:11px 15px;font-size:15px;resize:none;max-height:120px;outline:none;
+  }
+  #msg:focus{border-color:var(--accent)}
+  #send{
+    flex:none;background:var(--accent);color:#22130a;border:none;border-radius:22px;
+    padding:0 18px;font-weight:700;font-size:15px;cursor:pointer;
+  }
+  #send:disabled{opacity:.5;cursor:default}
+  /* name modal */
+  #gate{
+    position:fixed;inset:0;background:rgba(6,14,18,.92);display:flex;align-items:center;justify-content:center;padding:20px;z-index:10;
+  }
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:24px;max-width:380px;width:100%}
+  .card h2{margin:0 0 6px;font-size:19px}
+  .card p{margin:0 0 16px;color:var(--muted);font-size:13.5px;line-height:1.5}
+  .card input{width:100%;background:#0c1920;border:1px solid var(--line);color:var(--text);border-radius:10px;padding:12px;font-size:15px;margin-bottom:12px;outline:none}
+  .card input:focus{border-color:var(--accent)}
+  .card button{width:100%;background:var(--accent);color:#22130a;border:none;border-radius:10px;padding:12px;font-weight:700;font-size:15px;cursor:pointer}
+</style>
+</head>
+<body>
+  <div id="gate">
+    <div class="card">
+      <h2>FuelTap Assistant <span style="color:var(--accent)">- Test</span></h2>
+      <p>Thanks for helping test the FuelTap WhatsApp assistant before it goes live. Chat to it exactly like a real driver or fleet manager would - ask about declined pumps, vouchers, finding a station, prices, getting set up, anything.<br><br>If a reply is wrong, weak, or missing info, just type your next message starting with <b style="color:#ffd27a">BAD:</b> and say what was off - it helps us fix the knowledge.</p>
+      <input id="nameInput" placeholder="Your first name" autocomplete="given-name" />
+      <button id="startBtn">Start chatting</button>
+    </div>
+  </div>
+
+  <header>
+    <div class="logo">FT</div>
+    <div>
+      <h1>FuelTap Assistant</h1>
+      <div class="sub">Test bot &middot; answers from the live knowledge base</div>
+    </div>
+  </header>
+  <div class="banner">You are chatting with a <b>test version</b>. Every chat is reviewed to improve the answers. Don't share real card or personal details.</div>
+  <div id="chat"></div>
+  <footer>
+    <textarea id="msg" rows="1" placeholder="Type a message, like a driver would..."></textarea>
+    <button id="send">Send</button>
+  </footer>
+
+<script>
+const ENDPOINT = "https://updwoeiuwnahxyipldfv.supabase.co/functions/v1/fueltap-bot-test";
+const TEST_KEY = "fueltap-test-c8a021d24fc77589";
+const session_id = "web-" + Date.now() + "-" + Math.random().toString(36).slice(2,8);
+let tester_name = "";
+const history = [];
+
+const chat = document.getElementById("chat");
+const msgEl = document.getElementById("msg");
+const sendBtn = document.getElementById("send");
+
+function add(role, text){
+  const row = document.createElement("div");
+  row.className = "row " + (role === "me" ? "me" : "bot");
+  const b = document.createElement("div");
+  b.className = "bubble";
+  b.textContent = text;
+  row.appendChild(b);
+  chat.appendChild(row);
+  chat.scrollTop = chat.scrollHeight;
+  return row;
+}
+
+function addTyping(){
+  const row = document.createElement("div");
+  row.className = "row bot typing";
+  row.innerHTML = '<div class="bubble">FuelTap is typing...</div>';
+  chat.appendChild(row);
+  chat.scrollTop = chat.scrollHeight;
+  return row;
+}
+
+async function send(){
+  const text = msgEl.value.trim();
+  if(!text) return;
+  msgEl.value = ""; msgEl.style.height = "auto";
+  add("me", text);
+  history.push({role:"user", content:text});
+  sendBtn.disabled = true;
+  const typing = addTyping();
+  try{
+    const res = await fetch(ENDPOINT, {
+      method:"POST",
+      headers:{"Content-Type":"application/json","x-test-key":TEST_KEY},
+      body: JSON.stringify({ message:text, session_id, tester_name, history: history.slice(-6) })
+    });
+    const data = await res.json();
+    typing.remove();
+    if(data.reply){
+      const row = add("bot", data.reply);
+      history.push({role:"assistant", content:data.reply});
+      if(data.sources && data.sources.length){
+        const src = [...new Set(data.sources.map(s=>s.source_doc).filter(Boolean))].join(", ");
+        if(src){ const m=document.createElement("div"); m.className="meta"; m.textContent="from: "+src; row.querySelector(".bubble").appendChild(m); }
+      }
+    } else {
+      add("bot", "(Something went wrong: " + (data.error || "no reply") + ". Try again.)");
+    }
+  }catch(e){
+    typing.remove();
+    add("bot", "(Network error - please try again.)");
+  }finally{
+    sendBtn.disabled = false;
+    msgEl.focus();
+  }
+}
+
+sendBtn.addEventListener("click", send);
+msgEl.addEventListener("keydown", e=>{ if(e.key==="Enter" && !e.shiftKey){ e.preventDefault(); send(); }});
+msgEl.addEventListener("input", ()=>{ msgEl.style.height="auto"; msgEl.style.height=Math.min(msgEl.scrollHeight,120)+"px"; });
+
+// name gate
+const gate=document.getElementById("gate"), nameInput=document.getElementById("nameInput"), startBtn=document.getElementById("startBtn");
+function start(){
+  tester_name = (nameInput.value.trim() || "Anonymous").slice(0,40);
+  gate.style.display="none";
+  add("bot", "Hi " + tester_name.split(" ")[0] + "! I'm the FuelTap assistant. Ask me anything a driver or fleet manager might - a declined pump, loading a voucher, finding a station, getting set up. What can I help with?");
+  msgEl.focus();
+}
+startBtn.addEventListener("click", start);
+nameInput.addEventListener("keydown", e=>{ if(e.key==="Enter") start(); });
+nameInput.focus();
+</script>
+</body>
+</html>
