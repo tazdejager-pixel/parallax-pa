@@ -122,6 +122,7 @@
           applicationServerKey: urlB64ToUint8Array(C.VAPID_PUBLIC_KEY),
         }));
       await saveSubscription(sub);
+      setPushOptOut(false);
       note.textContent = "Notifications are on for this phone.";
       return true;
     } catch (e) {
@@ -129,7 +130,17 @@
       return false;
     }
   }
+  // Remembers a deliberate "off" so the self-heal in syncPushUI cannot switch
+  // notifications back on behind her. Turning the toggle on clears it.
+  const PUSH_OFF_KEY = "pa.pushOptOut";
+  function pushOptedOut() {
+    try { return localStorage.getItem(PUSH_OFF_KEY) === "1"; } catch (_) { return false; }
+  }
+  function setPushOptOut(v) {
+    try { v ? localStorage.setItem(PUSH_OFF_KEY, "1") : localStorage.removeItem(PUSH_OFF_KEY); } catch (_) {}
+  }
   async function disablePush() {
+    setPushOptOut(true);
     try {
       const sub = await getSubscription();
       if (sub) {
@@ -141,14 +152,29 @@
   }
   async function syncPushUI() {
     try {
-      const on = pushSupported() && Notification.permission === "granted" && !!(await getSubscription());
-      $("pushToggle").checked = on;
-      if (on && session) {
-        // keep the saved address fresh (endpoints can rotate)
-        const sub = await getSubscription();
-        if (sub) saveSubscription(sub);
+      if (!pushSupported() || Notification.permission !== "granted" || pushOptedOut()) {
+        $("pushToggle").checked = false;
+        return;
       }
-    } catch (_) {}
+      const reg = await navigator.serviceWorker.ready;
+      // Self-heal: permission is already granted, so re-subscribing here shows no
+      // prompt. Push services expire endpoints (and pa-push prunes them on 404/410),
+      // which used to leave the channel silently dead until the toggle was flipped
+      // by hand. Re-subscribing on open puts a live address back in the table.
+      let sub = await reg.pushManager.getSubscription();
+      if (!sub) {
+        sub = await reg.pushManager.subscribe({
+          userVisibleOnly: true,
+          applicationServerKey: urlB64ToUint8Array(C.VAPID_PUBLIC_KEY),
+        });
+      }
+      $("pushToggle").checked = !!sub;
+      // Keep the saved address fresh - endpoints rotate, and the row may have been
+      // pruned while this phone still held a valid subscription.
+      if (sub && session) await saveSubscription(sub);
+    } catch (_) {
+      try { $("pushToggle").checked = false; } catch (_) {}
+    }
   }
   $("pushToggle").addEventListener("change", async (e) => {
     if (e.target.checked) {
