@@ -53,7 +53,7 @@
     document.querySelectorAll(".nav-btn").forEach((b) =>
       b.classList.toggle("active", b.dataset.tab === tab)
     );
-    if (tab === "inbox") loadInbox();
+    if (tab === "inbox") { loadInbox(); loadNotifications(); }
     if (tab === "tasks") loadTasks();
     if (tab === "todo") loadTodos();
     if (tab === "chat") loadChatHistory();
@@ -589,6 +589,36 @@
     }
   }
 
+  async function loadNotifications() {
+    const list = $("notifyList");
+    if (!list) return;
+    try {
+      const { data } = await sb.from("pa_notifications").select("*").order("created_at", { ascending: false }).limit(30);
+      const rows = data || [];
+      if (!rows.length) {
+        list.innerHTML = '<div class="inbox-empty">No notifications yet.</div>';
+      } else {
+        list.innerHTML = "";
+        rows.forEach((n) => {
+          const card = document.createElement("div");
+          card.className = "inbox-card";
+          card.innerHTML =
+            '<div class="txt"><strong>' + escapeHtml(n.title || "My PA") + '</strong></div>' +
+            '<div class="txt">' + escapeHtml(n.body || "") + '</div>' +
+            '<div class="meta"><span>' + new Date(n.created_at).toLocaleString() + '</span></div>';
+          list.appendChild(card);
+        });
+      }
+      // Mark everything shown as read so the unread count reflects reality.
+      const unread = rows.filter((n) => !n.read_at).map((n) => n.id);
+      if (unread.length) {
+        await sb.from("pa_notifications").update({ read_at: new Date().toISOString() }).in("id", unread);
+      }
+    } catch (e) {
+      list.innerHTML = '<div class="inbox-empty">Could not load - check connection.</div>';
+    }
+  }
+
   async function loadTasks() {
     const list = $("tasksList");
     try {
@@ -699,3 +729,16 @@
   /* ---------- Init ---------- */
   initAuth();
 })();
+
+  /* ---------- Opened from a notification ---------- */
+  // The service worker sends us here after a tap. Without this, focusing an
+  // already-open window left it on whatever tab it happened to be showing.
+  function openFromHash() {
+    const t = (location.hash || "").replace("#", "");
+    if (["send", "chat", "tasks", "todo", "inbox"].includes(t)) switchTab(t);
+  }
+  window.addEventListener("hashchange", openFromHash);
+  openFromHash();
+  navigator.serviceWorker && navigator.serviceWorker.addEventListener("message", (e) => {
+    if (e.data && e.data.type === "navigate" && e.data.tab) switchTab(e.data.tab);
+  });
