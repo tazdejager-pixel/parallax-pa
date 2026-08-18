@@ -1,5 +1,5 @@
 /* Parallax PA - service worker (offline shell + push) */
-const CACHE = "parallax-pa-v15";
+const CACHE = "parallax-pa-v16";
 const SHELL = [
   "./", "./index.html", "./styles.css", "./app.js", "./config.js",
   "./manifest.webmanifest", "./icons/icon-192.png", "./icons/icon-512.png",
@@ -43,9 +43,17 @@ self.addEventListener("push", (e) => {
 
 self.addEventListener("notificationclick", (e) => {
   e.notification.close();
+  // Focusing an existing window is NOT enough - it lands on whatever tab was
+  // last open, so a tap appeared to do nothing. Tell the page to switch to the
+  // Inbox, where the full text of the notification is listed.
   e.waitUntil(
     self.clients.matchAll({ type: "window", includeUncontrolled: true }).then((list) => {
-      for (const c of list) { if ("focus" in c) return c.focus(); }
+      for (const c of list) {
+        if ("focus" in c) {
+          try { c.postMessage({ type: "navigate", tab: "inbox" }); } catch (_) {}
+          return c.focus();
+        }
+      }
       if (self.clients.openWindow) return self.clients.openWindow("./index.html#inbox");
     })
   );
