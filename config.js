@@ -29,6 +29,10 @@ window.PA_CONFIG = {
     { id: "qrtip",     label: "QR-TIP" },
     { id: "tarryn",    label: "Tarryn" },
     { id: "attorney",  label: "Attorney" },
+    // Added 03/09/2026. Kamb is the holding company and it owns the vault (the CEO
+    // knowledge base). Without this option a batch of links for the vault had to be
+    // tagged to an operating company, which filed it as post ideas instead.
+    { id: "kamb",      label: "Kamb - group / the vault" },
   ],
 
   // Web Push public key (VAPID). The private half lives server-side (Supabase edge function pa-push).
